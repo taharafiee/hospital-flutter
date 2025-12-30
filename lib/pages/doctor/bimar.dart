@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/doctor_service.dart';
 import '../patient/patient_detail_page.dart';
 import 'doctor_dashboard_page.dart';
+import 'prescription_form_page.dart';
 
 class Bimar extends StatefulWidget {
   const Bimar({super.key});
@@ -20,10 +21,9 @@ class _BimarState extends State<Bimar> {
     _futureAppointments = DoctorService.getAppointments();
   }
 
-  // ✅ فقط از details می‌خونیم
-  bool _isNotVisited(dynamic a) {
+  bool _isVisited(dynamic a) {
     final details = (a['details'] ?? '').toString().trim();
-    return details.isEmpty;
+    return details.isNotEmpty;
   }
 
   @override
@@ -60,25 +60,22 @@ class _BimarState extends State<Bimar> {
               );
             }
 
-            final allAppointments = snapshot.data ?? [];
+            final appointments = snapshot.data ?? [];
 
-            // 🔥 فقط بیمارایی که details خالیه
-            final pendingAppointments =
-                allAppointments.where(_isNotVisited).toList();
-
-            if (pendingAppointments.isEmpty) {
+            if (appointments.isEmpty) {
               return const Center(
                 child: Text(
-                  'بیماری در انتظار ویزیت وجود ندارد',
+                  'بیماری وجود ندارد',
                   style: TextStyle(color: Colors.white70),
                 ),
               );
             }
 
             return ListView.builder(
-              itemCount: pendingAppointments.length,
+              itemCount: appointments.length,
               itemBuilder: (context, index) {
-                final a = pendingAppointments[index];
+                final a = appointments[index];
+                final visited = _isVisited(a);
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -99,27 +96,22 @@ class _BimarState extends State<Bimar> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '📞 ${a['phone']}',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                        Text(
-                          '🗓 ${a['date']} | ⏰ ${a['time']}',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                      ],
+                    subtitle: Text(
+                      '🗓 ${a['date']}',
+                      style: const TextStyle(color: Colors.white70),
                     ),
-                    trailing: _waitingBadge(),
+                    trailing: _statusBadge(visited),
                     onTap: () async {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => MoshakhasotBimar(
-                            patientCodeMelli: a['codeMelli'],
-                          ),
+                          builder: (_) => visited
+                              ? MoshakhasotBimar(
+                                  patientCodeMelli: a['codeMelli'],
+                                )
+                              : PrescriptionPage(
+                                  visitId: a['id'], // 👈 خیلی مهم
+                                ),
                         ),
                       );
 
@@ -140,19 +132,23 @@ class _BimarState extends State<Bimar> {
     );
   }
 
-  // 🟠 همیشه «در انتظار ویزیت»
-  Widget _waitingBadge() {
+  /// 🟢🟠 وضعیت ویزیت
+  Widget _statusBadge(bool visited) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.2),
+        color: visited
+            ? Colors.green.withOpacity(0.2)
+            : Colors.orange.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange),
+        border: Border.all(
+          color: visited ? Colors.green : Colors.orange,
+        ),
       ),
-      child: const Text(
-        'در انتظار ویزیت',
+      child: Text(
+        visited ? 'ویزیت شده' : 'در انتظار ویزیت',
         style: TextStyle(
-          color: Colors.orangeAccent,
+          color: visited ? Colors.greenAccent : Colors.orangeAccent,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),

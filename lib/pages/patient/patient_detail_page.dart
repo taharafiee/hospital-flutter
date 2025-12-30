@@ -4,10 +4,10 @@ import 'package:http/http.dart' as http;
 
 import '../../config/api_config.dart';
 import '../../services/auth_service.dart';
-import '../doctor/prescription_form_page.dart';
+import '../doctor/prescription_form_page.dart'; // اگر مسیرت فرق داره درستش کن
 
 class MoshakhasotBimar extends StatefulWidget {
-  final String patientCodeMelli;
+  final String patientCodeMelli; // ✅ همین نام باید باشه
 
   const MoshakhasotBimar({
     super.key,
@@ -34,9 +34,7 @@ class _MoshakhasotBimarState extends State<MoshakhasotBimar> {
       final token = await AuthService.getToken();
 
       final res = await http.get(
-        Uri.parse(
-          "${ApiConfig.baseUrl}/doctor/patients/${widget.patientCodeMelli}",
-        ),
+        Uri.parse("${ApiConfig.baseUrl}/doctor/patients/${widget.patientCodeMelli}"),
         headers: {
           "Authorization": "Bearer $token",
         },
@@ -61,15 +59,25 @@ class _MoshakhasotBimarState extends State<MoshakhasotBimar> {
     }
   }
 
-  void _goToPrescription() {
-    Navigator.push(
+  void _goToPrescription() async {
+    // اگر نسخه صفحه PrescriptionPage تو پروژه‌ت با visitId هست،
+    // این صفحه رو باید از لیست appointments (با id) باز کنی نه از اینجا.
+    // فعلاً همون patientCodeMelli رو نگه می‌دارم تا خطا نده.
+
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PrescriptionPage(
-          patientCodeMelli: widget.patientCodeMelli,
+          // اگر PrescriptionPage تو پروژه‌ت visitId می‌گیره، اینجا باید عوض شه.
+          // اگر هنوز نسخه قدیمی patientCodeMelli می‌گیره، همین درست است:
+          visitId: _patient?['id'] ?? 0, // اگر نداری، باید از صفحه قبل بگیری
         ),
       ),
     );
+
+    if (result == true) {
+      _loadPatient();
+    }
   }
 
   @override
@@ -104,22 +112,22 @@ class _MoshakhasotBimarState extends State<MoshakhasotBimar> {
                       _header(),
                       const SizedBox(height: 24),
 
-                      _infoCard('نام و نام خانوادگی', _patient!['fullName']),
-                      _infoCard('سن', _patient!['age']),
-                      _infoCard('شماره تماس', _patient!['phone']),
-                      _infoCard('بیمارستان', _patient!['hospital']),
+                      _infoCard('نام و نام خانوادگی', _patient?['fullName']),
+                      _infoCard('سن', _patient?['age']),
+                      _infoCard('شماره تماس', _patient?['phone']),
+                      _infoCard('بیمارستان', _patient?['hospital']),
 
                       const SizedBox(height: 16),
 
                       _infoCard(
                         'بیماری اعلام‌شده',
-                        _patient!['disease'],
+                        _patient?['disease'],
                         icon: Icons.sick,
                       ),
 
                       _infoCard(
                         'توضیحات بیمار',
-                        _patient!['description'],
+                        _patient?['description'],
                         icon: Icons.notes,
                       ),
 
@@ -142,8 +150,7 @@ class _MoshakhasotBimarState extends State<MoshakhasotBimar> {
                                   Color(0xFF42A5F5),
                                 ],
                               ),
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(16)),
+                              borderRadius: BorderRadius.all(Radius.circular(16)),
                             ),
                             child: const Center(
                               child: Text(
@@ -188,8 +195,7 @@ class _MoshakhasotBimarState extends State<MoshakhasotBimar> {
         ],
       );
 
-  Widget _infoCard(String title, dynamic value,
-      {IconData icon = Icons.info}) {
+  Widget _infoCard(String title, dynamic value, {IconData icon = Icons.info}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(

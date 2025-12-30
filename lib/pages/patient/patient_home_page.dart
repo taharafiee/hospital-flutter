@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -20,9 +18,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _specialtyController = TextEditingController();
 
   bool _isLoading = false;
-  List<Map<String, dynamic>> _hospitals = [];
+
+  List<Map<String, dynamic>> _allHospitals = [];
+  List<Map<String, dynamic>> _filteredHospitals = [];
 
   final Map<int, List<Map<String, dynamic>>> _specialties = {};
   final Set<int> _expandedHospitals = {};
@@ -33,8 +34,8 @@ class _HomePageState extends State<HomePage> {
     _loadHospitals();
   }
 
+  // ================= LOAD HOSPITALS =================
   Future<void> _loadHospitals() async {
-    if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
@@ -42,14 +43,20 @@ class _HomePageState extends State<HomePage> {
           await http.get(Uri.parse("${ApiConfig.baseUrl}/hospitals"));
 
       if (res.statusCode == 200) {
-        _hospitals =
-            List<Map<String, dynamic>>.from(jsonDecode(res.body));
+       _allHospitals =
+    List<Map<String, dynamic>>.from(jsonDecode(res.body));
+
+setState(() {
+  _filteredHospitals = List.from(_allHospitals);
+});
+
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  // ================= LOAD SPECIALTIES =================
   Future<void> _loadSpecialties(int hospitalId) async {
     if (_specialties.containsKey(hospitalId)) return;
 
@@ -60,10 +67,57 @@ class _HomePageState extends State<HomePage> {
     if (res.statusCode == 200) {
       _specialties[hospitalId] =
           List<Map<String, dynamic>>.from(jsonDecode(res.body));
-      setState(() {});
     }
   }
 
+  // ================= FILTER (FIXED) =================
+  Future<void> _applyFilter() async {
+    final city = _locationController.text.trim().toLowerCase();
+    final specialty = _specialtyController.text.trim().toLowerCase();
+
+    List<Map<String, dynamic>> temp = [];
+
+    for (final h in _allHospitals) {
+      final locationMatch = city.isEmpty ||
+          (h['location'] ?? '')
+              .toString()
+              .toLowerCase()
+              .contains(city);
+
+      if (!locationMatch) continue;
+
+      // اگر تخصص سرچ نشده
+      if (specialty.isEmpty) {
+        temp.add(h);
+        continue;
+      }
+
+      // اگر تخصص سرچ شده → اول specialties رو بگیر
+      if (!_specialties.containsKey(h['id'])) {
+        await _loadSpecialties(h['id']);
+      }
+
+      final specs = _specialties[h['id']] ?? [];
+
+      final hasSpecialty = specs.any((s) =>
+          s['title']
+              .toString()
+              .toLowerCase()
+              .contains(specialty));
+
+      if (hasSpecialty) {
+        temp.add(h);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _filteredHospitals = temp;
+      });
+    }
+  }
+
+  // ================= LOGOUT =================
   Future<void> _logout() async {
     await AuthService.logout();
     if (!mounted) return;
@@ -78,9 +132,11 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _locationController.dispose();
+    _specialtyController.dispose();
     super.dispose();
   }
 
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,6 +165,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ================= APP BAR =================
   AppBar _buildAppBar() {
     return AppBar(
       elevation: 0,
@@ -128,9 +185,7 @@ class _HomePageState extends State<HomePage> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const PorofilLogin(),
-              ),
+              MaterialPageRoute(builder: (_) => const PorofilLogin()),
             );
           },
         ),
@@ -142,6 +197,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ================= WELCOME =================
   Widget _buildWelcome() {
     return Column(
       children: const [
@@ -163,6 +219,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ================= SEARCH CARD =================
   Widget _buildSearchCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -173,24 +230,18 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Column(
         children: [
-          TextField(
+          _searchField(
             controller: _locationController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'منطقه',
-              labelStyle: const TextStyle(color: Colors.white70),
-              prefixIcon:
-                  const Icon(Icons.location_on, color: Colors.white70),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Colors.white24),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: Colors.lightBlue),
-              ),
-            ),
+            label: 'شهر / منطقه',
+            icon: Icons.location_on,
+            onChanged: (_) => _applyFilter(),
+          ),
+          const SizedBox(height: 12),
+          _searchField(
+            controller: _specialtyController,
+            label: 'تخصص (مثلاً قلب، پوست...)',
+            icon: Icons.medical_services,
+            onChanged: (_) => _applyFilter(),
           ),
           const SizedBox(height: 16),
           Row(
@@ -198,7 +249,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _gradientButton(
                   text: 'جستجو',
-                  onTap: _loadHospitals,
+                  onTap: _applyFilter,
                 ),
               ),
               const SizedBox(width: 12),
@@ -208,7 +259,8 @@ class _HomePageState extends State<HomePage> {
                   colors: const [Colors.grey, Colors.blueGrey],
                   onTap: () {
                     _locationController.clear();
-                    _loadHospitals();
+                    _specialtyController.clear();
+                    _applyFilter();
                   },
                 ),
               ),
@@ -219,8 +271,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ================= HOSPITAL LIST =================
   Widget _buildHospitalList() {
-    if (_hospitals.isEmpty && !_isLoading) {
+    if (_filteredHospitals.isEmpty && !_isLoading) {
       return const Center(
         child: Text(
           'بیمارستانی یافت نشد',
@@ -230,9 +283,9 @@ class _HomePageState extends State<HomePage> {
     }
 
     return ListView.builder(
-      itemCount: _hospitals.length,
+      itemCount: _filteredHospitals.length,
       itemBuilder: (_, i) {
-        final h = _hospitals[i];
+        final h = _filteredHospitals[i];
         final id = h['id'];
         final isExpanded = _expandedHospitals.contains(id);
 
@@ -253,19 +306,15 @@ class _HomePageState extends State<HomePage> {
                   title: Text(
                     h['name'],
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
                     h['location'],
                     style: const TextStyle(color: Colors.white70),
                   ),
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white54,
-                    size: 16,
-                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      color: Colors.white54, size: 16),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -317,6 +366,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ================= SPECIALTIES =================
   Widget _buildSpecialtyChips(int hospitalId) {
     final list = _specialties[hospitalId];
 
@@ -344,8 +394,8 @@ class _HomePageState extends State<HomePage> {
       runSpacing: 10,
       children: list.map((s) {
         return Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.08),
             borderRadius: BorderRadius.circular(20),
@@ -363,6 +413,34 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  // ================= HELPERS =================
+  Widget _searchField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required Function(String) onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: Colors.white70),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Colors.white24),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide:
+              const BorderSide(color: Colors.lightBlue),
+        ),
+      ),
     );
   }
 
