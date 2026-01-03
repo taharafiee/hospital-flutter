@@ -36,7 +36,12 @@ Actively under development. Built as a serious academic and portfolio-level
 application. iOS support and advanced admin features are planned.
 
 👨‍💻 AUTHOR
+<<<<<<< HEAD
 Taha Rafiee
+=======
+Taha Rafiee shad
+
+>>>>>>> 11deccd (refactor: rename project and update configuration)
 
 --------------------------------------------------
 

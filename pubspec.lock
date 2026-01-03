@@ -353,7 +353,11 @@ packages:
     source: hosted
     version: "6.0.3"
   rename:
+<<<<<<< HEAD
     dependency: "direct dev"
+=======
+    dependency: "direct main"
+>>>>>>> 11deccd (refactor: rename project and update configuration)
     description:
       name: rename
       sha256: da5f4d67f8c68f066ad04edfd6585495dbe595f2baf3b1999eb6af1805d79539
