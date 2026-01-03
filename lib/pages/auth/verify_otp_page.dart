@@ -35,22 +35,22 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
   Timer? _timer;
   int _secondsLeft = 120;
 
-  void _log(String msg) {
-    log('[OTP] $msg');
-    debugPrint('[OTP] $msg');
-  }
-
   @override
   void initState() {
     super.initState();
-    _log('Page opened | fromProfile=${widget.fromProfile}');
+
+    // 🔥 خیلی مهم: روی focus تغییرات رو repaint کن
+    for (final f in _focusNodes) {
+      f.addListener(() => setState(() {}));
+    }
+
     _startTimer();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.fromProfile && !_sentOnce) {
-        _log('AUTO SEND OTP');
         _sendOtp(force: true);
       }
+      _focusNodes.first.requestFocus();
     });
   }
 
@@ -80,7 +80,7 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
 
   String get _otp => _controllers.map((c) => c.text).join();
 
-  // ================= SEND / RESEND =================
+  // ================= SEND OTP =================
   Future<void> _sendOtp({bool force = false}) async {
     if (!force && !_canResend) return;
     _sentOnce = true;
@@ -99,10 +99,7 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
           'Authorization': 'Bearer $token',
       };
 
-      final body =
-          widget.fromProfile ? {} : {'codeMelli': widget.codeMelli};
-
-      _log('SEND OTP → POST $url');
+      final body = widget.fromProfile ? {} : {'codeMelli': widget.codeMelli};
 
       final res = await http.post(
         Uri.parse(url),
@@ -110,17 +107,15 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
         body: jsonEncode(body),
       );
 
-      _log('STATUS: ${res.statusCode}');
       if (res.statusCode == 200) {
         for (final c in _controllers) c.clear();
         _focusNodes.first.requestFocus();
         _startTimer();
-        _snack('کد تأیید ارسال شد');
+        _snack('کد ارسال شد');
       } else {
         _snack('ارسال کد ناموفق بود');
       }
-    } catch (e) {
-      _log('ERROR SEND OTP: $e');
+    } catch (_) {
       _snack('خطا در ارتباط با سرور');
     }
   }
@@ -152,29 +147,24 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
           ? {'otp': _otp}
           : {'codeMelli': widget.codeMelli, 'otp': _otp};
 
-      _log('VERIFY → POST $url');
-
       final res = await http.post(
         Uri.parse(url),
         headers: headers,
         body: jsonEncode(body),
       );
 
-      _log('STATUS: ${res.statusCode}');
       if (res.statusCode == 200) {
         final resetToken = jsonDecode(res.body)['reset_token'];
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) =>
-                ResetPasswordPage(resetToken: resetToken),
+            builder: (_) => ResetPasswordPage(resetToken: resetToken),
           ),
         );
       } else {
-        _snack('کد وارد شده نامعتبر است');
+        _snack('کد نامعتبر است');
       }
-    } catch (e) {
-      _log('ERROR VERIFY: $e');
+    } catch (_) {
       _snack('خطا در ارتباط با سرور');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -182,8 +172,7 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -198,7 +187,6 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -210,109 +198,13 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
           ),
         ),
         child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 24),
-                      _header(),
-                      const SizedBox(height: 32),
-                      _glassCard(),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              );
-            },
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _glassCard(),
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  // ================= HEADER =================
-  Widget _header() => Column(
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.9, end: 1.05),
-            duration: const Duration(seconds: 2),
-            curve: Curves.easeInOut,
-            builder: (_, scale, child) =>
-                Transform.scale(scale: scale, child: child),
-            onEnd: () => setState(() {}),
-            child: Container(
-              width: 104,
-              height: 104,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF64B5F6), Color(0xFF1976D2)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blueAccent.withOpacity(0.8),
-                    blurRadius: 50,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.sms_rounded,
-                  color: Colors.white, size: 46),
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'تأیید کد پیامک',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'کد ۶ رقمی ارسال‌شده را وارد کنید',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-          const SizedBox(height: 14),
-          _timerRing(),
-        ],
-      );
-
-  Widget _timerRing() {
-    final progress = _secondsLeft / 120;
-    return SizedBox(
-      width: 60,
-      height: 60,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: progress,
-            strokeWidth: 5,
-            backgroundColor: Colors.white24,
-            valueColor: const AlwaysStoppedAnimation(
-              Color(0xFF64B5F6),
-            ),
-          ),
-          Text(
-            _timerText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -325,28 +217,37 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
           child: Container(
             padding: const EdgeInsets.all(26),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: Colors.white24),
             ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                const Text(
+                  'کد تأیید',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Row(
                   children: List.generate(
                     6,
                     (i) => Expanded(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: _otpBox(i),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  height: 54,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     style: ElevatedButton.styleFrom(
@@ -361,15 +262,14 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
                             Color(0xFF42A5F5),
                           ],
                         ),
-                        borderRadius:
-                            BorderRadius.all(Radius.circular(16)),
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
                       ),
                       child: Center(
                         child: _isLoading
                             ? const CircularProgressIndicator(
                                 color: Colors.white)
                             : const Text(
-                                'تأیید کد',
+                                'تأیید',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -379,10 +279,11 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
                 TextButton(
-                  onPressed: _canResend ? () => _sendOtp() : null,
-                  child: const Text('ارسال مجدد کد'),
+                  onPressed: _canResend ? _sendOtp : null,
+                  child: Text(
+                    _canResend ? 'ارسال مجدد' : _timerText,
+                  ),
                 ),
               ],
             ),
@@ -391,47 +292,43 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
       );
 
   // ================= OTP BOX =================
-  Widget _otpBox(int index) => AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+  Widget _otpBox(int index) => Container(
+        height: 56,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: _focusNodes[index].hasFocus
-                  ? Colors.blueAccent.withOpacity(0.6)
-                  : Colors.transparent,
-              blurRadius: 12,
-            ),
-          ],
-        ),
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: TextField(
-            controller: _controllers[index],
-            focusNode: _focusNodes[index],
-            maxLength: 1,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-            decoration: InputDecoration(
-              counterText: '',
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onChanged: (v) {
-              if (v.isNotEmpty && index < 5) {
-                _focusNodes[index + 1].requestFocus();
-              }
-            },
+          color: Colors.white.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _focusNodes[index].hasFocus
+                ? Colors.lightBlueAccent
+                : Colors.white24,
+            width: 2,
           ),
+        ),
+        child: TextField(
+          controller: _controllers[index],
+          focusNode: _focusNodes[index],
+          maxLength: 1,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+          decoration: const InputDecoration(
+            counterText: '',
+            border: InputBorder.none,
+          ),
+          onChanged: (v) {
+            setState(() {});
+            if (v.isNotEmpty && index < 5) {
+              _focusNodes[index + 1].requestFocus();
+            }
+            if (v.isEmpty && index > 0) {
+              _focusNodes[index - 1].requestFocus();
+            }
+          },
         ),
       );
 }
