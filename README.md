@@ -5,6 +5,7 @@ Hospital Flutter App is a modern, role-based hospital management mobile
 application built with Flutter 🚀. This project is designed to feel like
 a real-world medical system — not a basic demo or a default Flutter template.
 
+
 👤 PATIENTS
 Patients can securely authenticate using their national ID, manage their
 personal profile, review medical visit history, and access issued medical
