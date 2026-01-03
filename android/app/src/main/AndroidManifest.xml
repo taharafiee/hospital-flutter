@@ -1,7 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- اجازه اینترنت (خیلی مهم) -->
+    <!-- Internet access -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Required to allow APK installation from inside the app -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
     <application
         android:label="Hospital"

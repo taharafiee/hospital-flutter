@@ -1,19 +1,42 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+
 import '../auth/login_page.dart';
 import '../../routes/smart_route.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  static bool blockNavigation = true;
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _handleNavigation();
+  }
+
+  Future<void> _handleNavigation() async {
+    await Future.delayed(const Duration(seconds: 2));
+
+    while (SplashScreen.blockNavigation) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      SmartRoute.go(const LoginPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        SmartRoute.go(const LoginPage()),
-      );
-    });
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
