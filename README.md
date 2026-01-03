@@ -1,14 +1,43 @@
-# Hospital_Flutter
+# 🏥 Hospital Flutter App
 
-## Getting Started
+یک اپلیکیشن مدیریت بیمارستان توسعه داده‌شده با **Flutter** که امکان ورود بیماران، پزشکان و ادمین‌ها، مدیریت ویزیت‌ها، نسخه‌ها و اطلاعات پزشکی را فراهم می‌کند.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## ✨ امکانات اصلی
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 👤 بیماران
+- ثبت‌نام و ورود با کد ملی
+- مشاهده اطلاعات پروفایل
+- مشاهده لیست ویزیت‌ها
+- مشاهده نسخه‌های پزشکی
+- بازیابی رمز عبور با OTP
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 🩺 پزشکان
+- ورود پزشک
+- مشاهده پروفایل پزشک
+- مشاهده لیست بیماران
+- ثبت نسخه پزشکی
+- مشاهده نسخه‌های ثبت‌شده
+
+### 🛠️ ادمین
+- مدیریت بیمارستان‌ها
+- مدیریت تخصص‌ها
+- مدیریت کاربران (در حال توسعه)
+
+---
+
+## 🧱 تکنولوژی‌های استفاده‌شده
+
+- **Flutter** (Frontend)
+- **Dart**
+- **REST API**
+- **FastAPI / Backend API**
+- **SQL Server / MySQL**
+- **JWT Authentication**
+- **SharedPreferences**
+
+---
+
+## 📁 ساختار پروژه
+
