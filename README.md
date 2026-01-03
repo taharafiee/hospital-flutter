@@ -38,7 +38,6 @@ application. iOS support and advanced admin features are planned.
 👨‍💻 AUTHOR
 Taha Rafiee
 
-
 --------------------------------------------------
 
 
