@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 
 import 'pages/common/splash_page.dart';
+import 'pages/auth/login_page.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -27,15 +28,19 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+
+    /// بعد از اولین فریم، چک آپدیت انجام میشه
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForUpdate();
     });
   }
 
+  // ================= UPDATE CHECK =================
+
   Future<void> _checkForUpdate() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      final currentVersion = info.version; // 1.3.1
+      final currentVersion = info.version; // مثلا 1.3.1
 
       final res = await http.get(
         Uri.parse(
@@ -47,13 +52,19 @@ class _MyAppState extends State<MyApp> {
         },
       );
 
-      if (res.statusCode != 200) return;
+      if (res.statusCode != 200) {
+        SplashScreen.blockNavigation = false;
+        return;
+      }
 
       final data = jsonDecode(res.body);
       final latestVersion =
           (data['tag_name'] as String).replaceFirst('v', '');
 
-      if (!_isNewerVersion(currentVersion, latestVersion)) return;
+      if (!_isNewerVersion(currentVersion, latestVersion)) {
+        SplashScreen.blockNavigation = false;
+        return;
+      }
 
       final assets = data['assets'] as List;
       final apk = assets.firstWhere(
@@ -61,13 +72,18 @@ class _MyAppState extends State<MyApp> {
         orElse: () => null,
       );
 
-      if (apk == null) return;
+      if (apk == null) {
+        SplashScreen.blockNavigation = false;
+        return;
+      }
 
       _showUpdateDialog(
         apk['browser_download_url'],
         latestVersion,
       );
-    } catch (_) {}
+    } catch (e) {
+      SplashScreen.blockNavigation = false;
+    }
   }
 
   bool _isNewerVersion(String current, String latest) {
@@ -80,6 +96,8 @@ class _MyAppState extends State<MyApp> {
     }
     return false;
   }
+
+  // ================= UPDATE UI =================
 
   void _showUpdateDialog(String url, String version) {
     final context = navigatorKey.currentContext!;
@@ -111,7 +129,8 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  /// 🔥 دانلود با Progress واقعی (حل مشکل صفر موندن)
+  // ================= DOWNLOAD =================
+
   Future<void> _downloadWithProgress(String url) async {
     final context = navigatorKey.currentContext!;
     SplashScreen.blockNavigation = true;
@@ -125,7 +144,7 @@ class _MyAppState extends State<MyApp> {
       context: context,
       barrierDismissible: false,
       builder: (_) => StatefulBuilder(
-        builder: (context, setState) {
+        builder: (_, setState) {
           dialogSetState = setState;
           return AlertDialog(
             title: const Text('Downloading update'),
@@ -185,13 +204,17 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  // ================= APP =================
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Hospital App',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
       home: const SplashScreen(),
     );
   }

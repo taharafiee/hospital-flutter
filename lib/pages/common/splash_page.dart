@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../auth/login_page.dart';
-import '../../routes/smart_route.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     Navigator.pushReplacement(
       context,
-      SmartRoute.go(const LoginPage()),
+      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 
